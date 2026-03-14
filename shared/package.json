@@ -1,0 +1,14 @@
+{
+  "name": "@backend-platform/shared",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.18.2"
+}
