@@ -15,7 +15,7 @@ async function bootstrap() {
   
   app.use(express.json());
 
-  const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:secret@localhost:3307/backend-forge');
+  const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:root@localhost:3307/backend-forge');
 
     const adapter = new PrismaMariaDb({
     host: dbUrl.hostname,
