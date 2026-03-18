@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { ITokenService } from '../../domain/repos/IAuthService.js';
 
 export class JwtTokenService implements ITokenService {
-  private readonly accessSecret = process.env.JWT_ACCESS_SECRET || 'dev-secret';
+  private readonly accessSecret = process.env.JWT_ACCESS_SECRET || 'mysupersecreykey123';
   private readonly refreshSecret = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret';
 
   generateAccessToken(userId: string): string {

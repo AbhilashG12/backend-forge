@@ -1,15 +1,14 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import {Redis} from 'ioredis';
+import { Redis } from 'ioredis';
 import jwt from 'jsonwebtoken';
 import { pino } from 'pino';
-
 
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; role: string };
+      user?: { userId?: string; id?: string; role?: string };
     }
   }
 }
@@ -17,12 +16,11 @@ declare global {
 async function bootstrap() {
   const app = express();
   const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
-
   const logger = pino({ level: 'info' });
-  
+
   app.use((req: Request, res: Response, next: NextFunction) => {
     logger.info({ 
-      userId: req.user?.id || 'anonymous', 
+      userId: req.user?.userId || req.user?.id || 'anonymous', 
       method: req.method, 
       url: req.url 
     }, 'Incoming Request');
@@ -38,7 +36,8 @@ async function bootstrap() {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string };
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId?: string; id?: string; role?: string };
+      console.log('🔍 DECODED JWT PAYLOAD:', decoded);
       req.user = decoded; 
       next();
     } catch (err) {
@@ -49,7 +48,7 @@ async function bootstrap() {
 
   const rateLimiter = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const identifier = req.user?.id || req.ip || 'unknown-ip';
+      const identifier = req.user?.userId || req.user?.id || req.ip || 'unknown-ip';
       const redisKey = `rate:user:${identifier}`;
       
       const requests = await redis.incr(redisKey);
@@ -70,33 +69,69 @@ async function bootstrap() {
     }
   };
 
-
   app.use('/api/auth', rateLimiter, createProxyMiddleware({ 
-    target: 'http://localhost:3001', 
+    target: 'http://127.0.0.1:3001', 
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/auth/' },
+    on: {
+      proxyReq: (proxyReq, req: any) => {
+        console.log(`➡️  [PROXY] Forwarding ${req.method} to target: http://127.0.0.1:3001${proxyReq.path}`);
+      },
+      proxyRes: (proxyRes) => {
+        console.log(`⬅️  [PROXY] Auth Service returned status: ${proxyRes.statusCode}`);
+      },
+      error: (err, req, res) => {
+        console.error('❌ [PROXY ERROR to Auth]', err.message);
+        const response = res as Response;
+        if (!response.headersSent) {
+          response.status(502).json({ error: 'Gateway Proxy Error', details: err.message });
+        }
+      }
+    }
   }));
 
   app.use('/api/users', verifyJwt, rateLimiter, createProxyMiddleware({ 
-    target: 'http://localhost:3002', 
+    target: 'http://127.0.0.1:3002', 
     changeOrigin: true,
-    pathRewrite: { '^/api/users': '/users' },
+    pathRewrite: { '^/': '/users/' }, 
     on: {
       proxyReq: (proxyReq, req: any) => {
-        if (req.user) proxyReq.setHeader('x-user-id', req.user.id);
+        const userId = req.user?.userId || req.user?.id;
+        if (userId) {
+          proxyReq.setHeader('x-user-id', String(userId));
+        }
+      },
+      error: (err, req, res) => {
+        console.error('❌ [PROXY ERROR to User]', err.message);
+        const response = res as Response;
+        if (!response.headersSent) {
+          response.status(502).json({ error: 'Gateway Proxy Error', details: err.message });
+        }
       }
     }
   }));
 
   app.use('/api/jobs', verifyJwt, rateLimiter, createProxyMiddleware({ 
-    target: 'http://localhost:3003', 
+    target: 'http://127.0.0.1:3003', 
     changeOrigin: true,
-    pathRewrite: { '^/api/jobs': '/jobs' },
+    pathRewrite: { '^/': '/jobs/' }, 
     on: {
       proxyReq: (proxyReq, req: any) => {
-        if (req.user) proxyReq.setHeader('x-user-id', req.user.id);
+        const userId = req.user?.userId || req.user?.id;
+        if (userId) {
+          proxyReq.setHeader('x-user-id', String(userId));
+        }
+      },
+      error: (err, req, res) => {
+        console.error('❌ [PROXY ERROR to Job]', err.message);
+        const response = res as Response;
+        if (!response.headersSent) {
+          response.status(502).json({ error: 'Gateway Proxy Error', details: err.message });
+        }
       }
     }
   }));
+
   app.listen(process.env.PORT || 3000, () => {
     logger.info('🚀 API Gateway locked and loaded on http://localhost:3000');
   });
