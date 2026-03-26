@@ -14,7 +14,9 @@ export class PrismaUserRepo implements IUserRepo {
       data: {
         email: user.email,
         passwordHash: user.passwordHash,
-      },
-    });
+        role: user.role || 'user',  
+        name: user.name || null, 
+    }
+  });
   }
 }

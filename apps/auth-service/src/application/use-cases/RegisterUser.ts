@@ -17,6 +17,8 @@ export class RegisterUser {
     const newUser = await this.userRepository.save({
       email,
       passwordHash: hashedPassword,
+      role: 'user', 
+      name: null
     });
     const accessToken = this.tokenService.generateAccessToken(newUser.id);
     const refreshToken = this.tokenService.generateRefreshToken(newUser.id);

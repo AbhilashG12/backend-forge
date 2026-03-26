@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from "express";
-import {PrismaClient} from "../prisma/generated/prisma/client";
+import { PrismaClient } from "../prisma/generated/prisma/client";
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { Redis } from 'ioredis';
 
@@ -13,19 +13,19 @@ async function bootstrap(){
     const app = express();
     app.use(express.json());
 
-    const dbUrl = new URL(process.env.DATABASE_URL!);
-    
+    const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:root@127.0.0.1:3306/backend-forge');
     const adapter = new PrismaMariaDb({
-        host: dbUrl.hostname,
+        host: '127.0.0.1', 
         port: Number(dbUrl.port) || 3307,
-        user: dbUrl.username,
-        password: dbUrl.password,
-        database: dbUrl.pathname.substring(1), 
+        user: dbUrl.username || 'root',
+        password: dbUrl.password || 'root',
+        database: dbUrl.pathname.substring(1) || 'backend-forge', 
         connectionLimit: 10,
-    } as any);
+    });
 
-    const prisma = new PrismaClient({adapter})
-    const redis = new Redis(process.env.REDIS_URL!)
+    const prisma = new PrismaClient({adapter});
+    
+    const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
     const userRepo = new PrismaUserRepository(prisma);
     const userCache = new RedisUserCache(redis);

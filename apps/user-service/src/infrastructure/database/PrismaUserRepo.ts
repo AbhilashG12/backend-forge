@@ -5,8 +5,15 @@ import { User } from '../../domain/entities/User.js';
 export class PrismaUserRepository implements IUserRepo {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: Omit<User, 'id' | 'createdAt'>): Promise<User> {
-    return this.prisma.user.create({ data });
+  async create(data: User): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name || null,
+        role: data.role || 'user',
+        passwordHash: data.passwordHash || 'created-by-user-service-no-password', 
+      }
+    });
   }
 
   async findById(id: string): Promise<User | null> {

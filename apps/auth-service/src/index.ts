@@ -15,7 +15,7 @@ async function bootstrap() {
   
   app.use(express.json());
 
-  const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:root@localhost:3307/backend-forge');
+  const dbUrl = new URL(process.env.DATABASE_URL || 'mysql://root:root@localhost:3306/backend-forge');
 
     const adapter = new PrismaMariaDb({
     host: dbUrl.hostname,
@@ -24,6 +24,7 @@ async function bootstrap() {
     password: dbUrl.password,
     database: dbUrl.pathname.substring(1), 
     connectionLimit: 10,
+    allowPublicKeyRetrieval : true,
   });
 
   const prisma = new PrismaClient({adapter});
