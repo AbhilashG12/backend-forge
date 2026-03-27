@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. The Database
+ 
   mysql:
     image: mysql:8.0
     container_name: platform-mysql
@@ -12,15 +12,26 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-  # 2. The Cache & Queue Broker
+  
   redis:
     image: redis:7-alpine
     container_name: platform-redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-  # 3. Auth Service
+  
   auth-service:
     build: 
       context: ../      
@@ -35,10 +46,18 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-  # 4. User Service
+  
   user-service:
     build: 
       context: ../
@@ -52,10 +71,18 @@ services:
     ports:
       - "3002:3002"
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-  # 5. Job Service
+   
   job-service:
     build: 
       context: ../
@@ -68,21 +95,15 @@ services:
     ports:
       - "3003:3003"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-  # 6. Worker Service
-  worker-service:
-    build: 
-      context: ../
-      dockerfile: Dockerfile
-    container_name: worker-service
-    command: pnpx tsx apps/worker-service/src/index.ts
-    environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
-
-  # 7. API Gateway
   api-gateway:
     build: 
       context: ../
@@ -99,9 +120,17 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - auth-service
-      - user-service
-      - job-service
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      job-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   mysql_data:

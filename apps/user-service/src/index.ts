@@ -37,6 +37,9 @@ async function bootstrap(){
     app.patch('/users/:id', controller.update);
     app.delete('/users/:id', controller.delete);
     app.get('/users', controller.list);
+    app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'UP', service: 'user-service' });
+    });
 
     const PORT = process.env.PORT || 3002;
     app.listen(PORT, () => console.log(`✅ User Service running on http://localhost:${PORT}`));

@@ -9,7 +9,9 @@ async function bootstrap() {
   const jobController = new JobController();
 
   app.post('/jobs/:type', jobController.createJob);
-  
+  app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'UP', service: 'job-service' });
+});
   app.get('/jobs/:id', jobController.getJobStatus);
 
   const PORT = process.env.PORT || 3003;
