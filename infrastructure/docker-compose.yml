@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. The Database
   mysql:
     image: mysql:8.0
     container_name: platform-mysql
@@ -12,11 +13,95 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  # 2. The Cache & Queue Broker
   redis:
     image: redis:7-alpine
     container_name: platform-redis
     ports:
       - "6379:6379"
+
+  # 3. Auth Service
+  auth-service:
+    build: 
+      context: ../      
+      dockerfile: Dockerfile
+    container_name: auth-service
+    command: pnpx tsx apps/auth-service/src/index.ts
+    environment:
+      - DATABASE_URL=mysql://root:root@mysql:3306/backend-forge
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=mysupersecreykey123
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+      - redis
+
+  # 4. User Service
+  user-service:
+    build: 
+      context: ../
+      dockerfile: Dockerfile
+    container_name: user-service
+    command: pnpx tsx apps/user-service/src/index.ts
+    environment:
+      - DATABASE_URL=mysql://root:root@mysql:3306/backend-forge
+      - REDIS_URL=redis://redis:6379
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mysql
+      - redis
+
+  # 5. Job Service
+  job-service:
+    build: 
+      context: ../
+      dockerfile: Dockerfile
+    container_name: job-service
+    command: pnpx tsx apps/job-service/src/index.ts
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3003
+    ports:
+      - "3003:3003"
+    depends_on:
+      - redis
+
+  # 6. Worker Service
+  worker-service:
+    build: 
+      context: ../
+      dockerfile: Dockerfile
+    container_name: worker-service
+    command: pnpx tsx apps/worker-service/src/index.ts
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  # 7. API Gateway
+  api-gateway:
+    build: 
+      context: ../
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    command: pnpx tsx apps/api-gateway/src/index.ts
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=mysupersecreykey123
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - USER_SERVICE_URL=http://user-service:3002
+      - JOB_SERVICE_URL=http://job-service:3003
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - user-service
+      - job-service
 
 volumes:
   mysql_data:

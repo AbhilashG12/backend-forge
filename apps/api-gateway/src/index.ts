@@ -69,8 +69,10 @@ async function bootstrap() {
     }
   };
 
+
+  
   app.use('/api/auth', rateLimiter, createProxyMiddleware({ 
-    target: 'http://127.0.0.1:3001', 
+    target: 'http://auth-service:3001', 
     changeOrigin: true,
     pathRewrite: { '^/': '/api/auth/' },
     on: {
@@ -91,7 +93,7 @@ async function bootstrap() {
   }));
 
   app.use('/api/users', verifyJwt, rateLimiter, createProxyMiddleware({ 
-    target: 'http://127.0.0.1:3002', 
+    target: 'http://user-service:3002', 
     changeOrigin: true,
     pathRewrite: { '^/': '/users/' }, 
     on: {
@@ -112,7 +114,7 @@ async function bootstrap() {
   }));
 
   app.use('/api/jobs', verifyJwt, rateLimiter, createProxyMiddleware({ 
-    target: 'http://127.0.0.1:3003', 
+    target: 'http://job-service:3003', 
     changeOrigin: true,
     pathRewrite: { '^/': '/jobs/' }, 
     on: {
